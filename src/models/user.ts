@@ -1,6 +1,7 @@
 import { Document, Model, Schema, model } from "mongoose";
 
 import jwt from "jsonwebtoken";
+import NotAuthorizedError from "../errors/not-authorized-error";
 
 interface IUser {
   email: string;
@@ -13,7 +14,10 @@ interface IUser {
 interface IUserDoc extends Document, IUser {}
 
 interface IUserModel extends Model<IUserDoc> {
-  findByCredentials: (email: string, password: string) => void;
+  findByCredentials: (
+    email: string,
+    password: string,
+  ) => Promise<IUserDoc | never>;
 }
 
 const userSchema = new Schema(
@@ -65,7 +69,21 @@ userSchema.methods.generateToken = function () {
   });
 };
 
-userSchema.statics.findByCredentials = async function (email, password) {};
+userSchema.statics.findByCredentials = async function (
+  email: string,
+  password: string,
+) {
+  const user = await this.findOne({ email })
+    .select("+password")
+    .orFail(
+      () => new NotAuthorizedError("User with provided credentials not found!"),
+    );
+  if (user.password !== password) {
+    throw new NotAuthorizedError("User with provided credentials not found!");
+  }
+
+  return user;
+};
 
 const User = model<IUser, IUserModel>("user", userSchema);
 
