@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import Todo from "../models/todo";
 import NotFoundError from "../errors/not-found-error";
 import { Error as MongooseError } from "mongoose";
+import ForbiddenError from "../errors/forbidden-error";
 
 export const createTodo = async (
   req: Request,
@@ -62,17 +63,17 @@ export const removeTodoById = async (
       () => new NotFoundError("Todo does not exist!"),
     );
     if (todo.owner.toString() !== userId) {
-      // Forbidden 403
-      throw new NotFoundError("Todo does not exist!");
+      return next(new ForbiddenError("Access denied!"));
     }
-    await Todo.deleteOne({ _id: id, owner: userId }).orFail(
-      () => new NotFoundError("Todo does not user!"),
-    );
+    // await Todo.deleteOne({ _id: id, owner: userId }).orFail(
+    //   () => new NotFoundError("Todo does not user!"),
+    // );
+    await Todo.findByIdAndDelete(id);
     return res.send({ message: "Todo deleted" });
   } catch (error) {
-    if (error instanceof MongooseError.DocumentNotFoundError) {
-      return next(new NotFoundError("Todo does not exist!"));
-    }
+    // if (error instanceof MongooseError.DocumentNotFoundError) {
+    //   return next(new NotFoundError("Todo does not exist!"));
+    // }
     next(error);
   }
 };
