@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import NotAuthorizedError from "../errors/not-authorized-error";
 
 export default (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.token;
+  const token = req.cookies.access_token;
 
   if (!token) {
     next(new NotAuthorizedError());

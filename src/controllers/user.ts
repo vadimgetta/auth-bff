@@ -23,8 +23,7 @@ export const createUser = async (
       .status(201)
       .cookie("access_token", token, {
         httpOnly: true,
-        secure: true,
-        // secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production",
         // sameSite: "strict",
         maxAge: 3600000,
       })
