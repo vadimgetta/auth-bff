@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 
 import Todo from "../models/todo";
 import NotFoundError from "../errors/not-found-error";
+import { Error as MongooseError } from "mongoose";
 
 export const createTodo = async (
   req: Request,
@@ -10,7 +11,9 @@ export const createTodo = async (
 ) => {
   const todo = req.body;
 
-  todo.owner = "680cab4c76b59ccf2b3203e3";
+  const { id: userId } = res.locals.user;
+
+  todo.owner = userId;
 
   try {
     const newTodo = await Todo.create(todo);
@@ -29,11 +32,13 @@ export const getAllTodos = async (
   const limit = Number(req.query.limit) || 10;
   const page = Number(req.query.page) || 1;
 
+  const { id: userId } = res.locals.user;
+
   try {
-    const totalDocs = await Todo.countDocuments();
+    const totalDocs = await Todo.countDocuments({ owner: userId });
     const totalPages = Math.ceil(totalDocs / limit);
 
-    const todos = await Todo.find()
+    const todos = await Todo.find({ owner: userId })
       .populate("owner")
       .limit(limit)
       .skip((page - 1) * limit);
@@ -50,12 +55,24 @@ export const removeTodoById = async (
   next: NextFunction,
 ) => {
   const id = req.params.id;
+  const { id: userId } = res.locals.user;
 
   try {
-    await Todo.findByIdAndDelete(id).orFail(
+    const todo = await Todo.findById(id).orFail(
       () => new NotFoundError("Todo does not exist!"),
     );
+    if (todo.owner.toString() !== userId) {
+      // Forbidden 403
+      throw new NotFoundError("Todo does not exist!");
+    }
+    await Todo.deleteOne({ _id: id, owner: userId }).orFail(
+      () => new NotFoundError("Todo does not user!"),
+    );
+    return res.send({ message: "Todo deleted" });
   } catch (error) {
+    if (error instanceof MongooseError.DocumentNotFoundError) {
+      return next(new NotFoundError("Todo does not exist!"));
+    }
     next(error);
   }
 };
