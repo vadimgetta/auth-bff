@@ -1,4 +1,5 @@
 import { Document, Model, Schema, model } from "mongoose";
+import bcrypt from "bcryptjs";
 
 import jwt from "jsonwebtoken";
 import NotAuthorizedError from "../errors/not-authorized-error";
@@ -58,9 +59,15 @@ const userSchema = new Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  // hash password
-  console.log("Pre save hook");
-  next();
+  try {
+    if (this.isModified("password")) {
+      const salt = await bcrypt.genSalt(10);
+      this.password = await bcrypt.hash(this.password, salt);
+    }
+    next();
+  } catch (error) {
+    next(error as Error);
+  }
 });
 
 userSchema.methods.generateToken = function () {
@@ -78,7 +85,9 @@ userSchema.statics.findByCredentials = async function (
     .orFail(
       () => new NotAuthorizedError("User with provided credentials not found!"),
     );
-  if (user.password !== password) {
+
+  const isPasswordCorrect = await bcrypt.compare(password, user.password);
+  if (!isPasswordCorrect) {
     throw new NotAuthorizedError("User with provided credentials not found!");
   }
 
