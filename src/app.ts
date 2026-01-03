@@ -8,11 +8,12 @@ import userRouter from "./routes/user";
 import cookieParser from "cookie-parser";
 import authMiddleware from "./middlewares/auth";
 import authRouter from "./routes/auth";
+import cors from "cors";
 
-const { PORT, MONGO_URL } = process.env;
+const { PORT, MONGO_URL, FRONTEND_URL } = process.env;
 
 const app = express();
-
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 app.use(cookieParser());
